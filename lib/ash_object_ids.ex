@@ -26,7 +26,8 @@ defmodule AshObjectIds do
 
   `AshObjectIds` replaces the `:id` primary key with an object ID (prefixed by "p").
   The underlying UUID implementation will be used, so it works with both UUID
-  and UUIDv7. The IDs are stored as regular UUIDs in the database.
+  and UUIDv7. The IDs are stored as regular UUIDs in the database. Externally,
+  the UUIDs are encoded as "{prefix}_{base58(uuid)}".
 
   Each resource will have a generated `<resource>.ObjectId` module which is the
   `Ash.Type` for that ID. This can then be used with `belongs_to` relationships:
