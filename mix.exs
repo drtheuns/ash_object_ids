@@ -37,7 +37,7 @@ defmodule AshObjectIds.MixProject do
     [
       name: :ash_object_ids,
       licenses: ["MIT"],
-      files: ["lib", ".formatter", "mix.exs", "README*", "LICENSE*"],
+      files: ["lib", ".formatter.exs", "mix.exs", "README*", "LICENSE*"],
       links: %{
         GitHub: @project_url
       }
@@ -47,7 +47,8 @@ defmodule AshObjectIds.MixProject do
   defp deps do
     [
       {:ash, "~> 3.0"},
-      {:erl_base58, "~> 0.0.1"}
+      {:erl_base58, "~> 0.0.1"},
+      {:ex_doc, "~> 0.38.3", only: :dev, runtime: false}
     ]
   end
 end
