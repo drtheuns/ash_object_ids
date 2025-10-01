@@ -51,7 +51,10 @@ defmodule AshObjectIds.Persisters.DefineType do
     {:ok,
      Spark.Dsl.Transformer.eval(
        dsl,
-       [],
+       [
+         uuid_type: uuid_type,
+         prefix: prefix
+       ],
        quote do
          defmodule ObjectId do
            use Ash.Type
