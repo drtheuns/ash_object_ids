@@ -6,11 +6,10 @@ An extension for Ash for working with [object IDs](https://dev.to/stripe/designi
 defmodule App.Blog.Post do
   use Ash.Resource,
     domain: App.Blog,
-    data_layer: Ash.DataLayer.AshPostgres,
-    extensions: [AshObjectIds]
+    data_layer: Ash.DataLayer.AshPostgres
 
-  object_id do
-    prefix "p"
+  defmodule Id do
+    use AshObjectIds.Type, prefix: "p", uuid_type: :uuid_v7
   end
 
   # .. data layer stuff
@@ -20,14 +19,21 @@ defmodule App.Blog.Post do
   end
 
   attributes do
-    uuid_primary_key(:id)
+    attribute :id, Id do
+      primary_key?(true)
+      public?(true)
+      writable?(false)
+      default(&Id.generate/0)
+      allow_nil?(false)
+    end
+
     attribute(:title, :string, public?: true)
     # ... other attributes
   end
 end
 
 # Example:
-%Post{id: "p_CWzLBdFy2f1XhrtesFferY"} =
+%Post{id: "p_Cd4XsS9R7QseqGnYf3eZb"} =
   Post
   |> Ash.Changeset.for_create(:create, %{title: "Hello world"})
   |> Ash.create!()
