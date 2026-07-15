@@ -1,6 +1,6 @@
 defmodule AshObjectIds do
   @moduledoc """
-  An extension for working with object IDs.
+  A helper library for working with object IDs in Ash.
 
   Object IDs are identifiers that are prefixed with the resource they identify.
   A more detailed explanation can be found in the ["Designing APIs for
@@ -12,70 +12,36 @@ defmodule AshObjectIds do
         use Ash.Resource,
           domain: App.Blog,
           data_layer: Ash.DataLayer.AshPostgres,
-          extensions: [AshObjectIds]
 
-        object_id do
-          prefix "p"
+        defmodule Id do
+          use AshObjectIds.Type, prefix: "p", uuid_type: :uuid_v7
         end
 
         attributes do
-          uuid_primary_key(:id)
+          attribute :id, Id do
+            primary_key?(true)
+            public?(true)
+            writable?(false)
+            default(&Id.generate/0)
+            allow_nil?(false)
+          end
+
           # ... other attributes
         end
       end
 
-  `AshObjectIds` replaces the `:id` primary key with an object ID (prefixed by "p").
-  The underlying UUID implementation will be used, so it works with both UUID
-  and UUIDv7. The IDs are stored as regular UUIDs in the database. Externally,
-  the UUIDs are encoded as "{prefix}_{base58(uuid)}".
-
-  Each resource will have a generated `<resource>.ObjectId` module which is the
-  `Ash.Type` for that ID. This can then be used with `belongs_to` relationships:
-
-      relationships do
-        belongs_to :post, App.Blog.Post, attribute_type: App.Blog.Post.ObjectId
-      end
+  The IDs are base58-encoded UUIDs with a prefix.
   """
 
   alias AshObjectIds.Type
-
-  @persisters [
-    AshObjectIds.Persisters.DefineType
-  ]
-
-  @object_id %Spark.Dsl.Section{
-    name: :object_id,
-    describe: "Use object ID for identifier of a resource",
-    examples: [
-      """
-      object_id do
-        prefix "u"
-      end
-      """
-    ],
-    schema: [
-      prefix: [
-        type: :string,
-        doc: "The prefix to use for the given resource",
-        required: true
-      ]
-    ]
-  }
-
-  use Spark.Dsl.Extension,
-    sections: [@object_id],
-    persisters: @persisters
 
   @doc """
   Decodes the given object ID into a string version of the UUID.
 
   ## Examples
 
-      iex> decode_object_id("user_CWzLBdFy2f1XhrtesFferY")
+      iex> decode_object_id("user_Cd4WBXFmobLLv7gfB4MuH")
       {:ok, "5d446d08-df6a-404d-a1e5-decc78429b3d"}
-
-      iex> decode_object_id("florb_CWzLBdFy2f1XhrtesFferY")
-      :error
 
       iex> decode_object_id("something else")
       :error
@@ -107,10 +73,18 @@ defmodule AshObjectIds do
       domain
       |> Ash.Domain.Info.resources()
       |> Enum.find_value(fn resource ->
-        case AshObjectIds.Info.object_id_prefix(resource) do
-          {:ok, ^prefix} -> resource
-          _ -> nil
-        end
+        resource
+        |> Ash.Resource.Info.primary_key()
+        |> Enum.find_value(fn attr_name ->
+          attribute = Ash.Resource.Info.attribute(resource, attr_name)
+          # Force loading the module with a cheap function call
+          attribute.type.ecto_type()
+
+          if function_exported?(attribute.type, :__object_id_info__, 0) &&
+               attribute.type.__object_id_info__()[:prefix] == prefix do
+            resource
+          end
+        end)
       end)
     end)
   end
@@ -143,10 +117,20 @@ defmodule AshObjectIds do
       domain
       |> Ash.Domain.Info.resources()
       |> Enum.reduce(mapping, fn resource, mapping ->
-        case AshObjectIds.Info.object_id_prefix(resource) do
-          {:ok, prefix} -> Map.update(mapping, prefix, [resource], &[resource | &1])
-          _ -> mapping
-        end
+        resource
+        |> Ash.Resource.Info.primary_key()
+        |> Enum.reduce(mapping, fn attr_name, mapping ->
+          attribute = Ash.Resource.Info.attribute(resource, attr_name)
+          # Force loading the module with a cheap function call
+          attribute.type.ecto_type()
+
+          if function_exported?(attribute.type, :__object_id_info__, 0) do
+            prefix = attribute.type.__object_id_info__()[:prefix]
+            Map.update(mapping, prefix, [resource], &[resource | &1])
+          else
+            mapping
+          end
+        end)
       end)
     end)
   end
@@ -156,7 +140,12 @@ defmodule AshObjectIds do
   contain more than resource for the given prefix.
 
   This function can be used to warn whenever duplicate prefixes are present in
-  your modules.
+  your modules. For example, in a test:
+
+      test "there are no duplicate object id prefixes" do
+        domains = Application.fetch_env!(:my_otp_app, :ash_domains)
+        assert AshObjectIds.find_duplicate_prefixes(domains) == %{}
+      end
   """
   @spec find_duplicate_prefixes([module()]) :: %{String.t() => [module()]}
   def find_duplicate_prefixes(domains) do

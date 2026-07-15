@@ -7,11 +7,13 @@ defmodule AshObjectIds.TypeTest do
     test "cast_input with #{inspect(type)}" do
       assert {:ok, nil} = Type.cast_input(unquote(type), "user", nil, [])
 
-      assert {:ok, "user_CWzLBdFy2f1XhrtesFferY"} =
-               Type.cast_input(unquote(type), "user", "user_CWzLBdFy2f1XhrtesFferY", [])
+      id = Type.encode_uuid(Ash.UUIDv7.bingenerate(), "user")
+
+      assert {:ok, ^id} =
+               Type.cast_input(unquote(type), "user", id, [])
 
       assert {:error, "incorrect object prefix"} =
-               Type.cast_input(unquote(type), "post", "user_CWzLBdFy2f1XhrtesFferY", [])
+               Type.cast_input(unquote(type), "post", id, [])
     end
 
     test "cast_stored with #{inspect(type)}" do

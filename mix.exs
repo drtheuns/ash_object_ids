@@ -5,7 +5,7 @@ defmodule AshObjectIds.MixProject do
   An Ash extension to use object IDs as primary and foreign keys.
   """
 
-  @version "0.1.0"
+  @version "0.2.0"
 
   @project_url "https://github.com/drtheuns/ash_object_ids"
 

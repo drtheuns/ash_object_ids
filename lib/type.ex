@@ -1,5 +1,73 @@
 defmodule AshObjectIds.Type do
-  @moduledoc false
+  @moduledoc """
+  Helper to define the object ID as `Ash.Type`.
+  """
+
+  defmacro __using__(opts) do
+    prefix = Keyword.fetch!(opts, :prefix)
+    uuid_type = Keyword.get(opts, :uuid_type, :uuid) |> Ash.Type.get_type()
+
+    quote do
+      use Ash.Type
+
+      def __object_id_info__, do: [prefix: unquote(prefix), uuid_type: unquote(uuid_type)]
+
+      @impl Ash.Type
+      defdelegate storage_type(constraints), to: unquote(uuid_type)
+
+      @impl Ash.Type
+      def cast_input(input, constraints) do
+        AshObjectIds.Type.cast_input(unquote(uuid_type), unquote(prefix), input, constraints)
+      end
+
+      @impl Ash.Type
+      def cast_stored(input, constraints) do
+        AshObjectIds.Type.cast_stored(
+          unquote(uuid_type),
+          unquote(prefix),
+          input,
+          constraints
+        )
+      end
+
+      @impl Ash.Type
+      def dump_to_native(input, constraints) do
+        AshObjectIds.Type.dump_to_native(
+          unquote(uuid_type),
+          unquote(prefix),
+          input,
+          constraints
+        )
+      end
+
+      @impl Ash.Type
+      def dump_to_embedded(value, constraints) do
+        cast_input(value, constraints)
+      end
+
+      @impl Ash.Type
+      def matches_type?(value, constraints) do
+        case cast_input(value, constraints) do
+          {:ok, _} -> true
+          _ -> false
+        end
+      end
+
+      @impl Ash.Type
+      def cast_atomic(new_value, constraints) do
+        unquote(uuid_type).cast_atomic(new_value, constraints)
+      end
+
+      @impl Ash.Type
+      def generator(constraints) do
+        AshObjectIds.Type.generator(unquote(uuid_type), unquote(prefix), constraints)
+      end
+
+      def generate(constraints \\ []) do
+        AshObjectIds.Type.generate(unquote(uuid_type), unquote(prefix), constraints)
+      end
+    end
+  end
 
   def cast_input(_uuid_type, _prefix, nil, _constraints), do: {:ok, nil}
 

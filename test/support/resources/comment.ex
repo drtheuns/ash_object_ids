@@ -1,16 +1,15 @@
 defmodule AshObjectIds.Test.Resources.Comment do
   @moduledoc false
 
-  alias AshObjectIds.Test.Resources.Post
+  defmodule Id do
+    use AshObjectIds.Type, prefix: "c", uuid_type: :uuid
+  end
 
   use Ash.Resource,
     domain: AshObjectIds.Test.Domain,
-    data_layer: Ash.DataLayer.Ets,
-    extensions: [AshObjectIds]
+    data_layer: Ash.DataLayer.Ets
 
-  object_id do
-    prefix "c"
-  end
+  alias AshObjectIds.Test.Resources.Post
 
   ets do
     private?(true)
@@ -21,11 +20,18 @@ defmodule AshObjectIds.Test.Resources.Comment do
   end
 
   attributes do
-    uuid_primary_key(:id)
+    attribute :id, Id do
+      primary_key?(true)
+      public?(true)
+      writable?(false)
+      default(&Id.generate/0)
+      allow_nil?(false)
+    end
+
     attribute(:body, :string, public?: true)
   end
 
   relationships do
-    belongs_to(:post, Post, attribute_type: Post.ObjectId)
+    belongs_to(:post, Post, attribute_type: Post.Id)
   end
 end

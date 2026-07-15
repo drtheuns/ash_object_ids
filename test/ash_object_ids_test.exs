@@ -7,11 +7,13 @@ defmodule AshObjectIdsTest do
   alias AshObjectIds.Test.Resources.Post
   alias AshObjectIds.Test.Resources.Unrelated
 
+  @moduletag capture_log: true
+
   test "it replaces the primary key with an object id" do
     assert [pk] = Ash.Resource.Info.primary_key(Post)
     attr = Ash.Resource.Info.attribute(Post, pk)
     assert attr.name == :id
-    assert attr.type == Post.ObjectId
+    assert attr.type == Post.Id
   end
 
   test "relationships" do
@@ -41,6 +43,23 @@ defmodule AshObjectIdsTest do
       |> Ash.create!()
 
     assert "c_" <> _ = comment.id
+  end
+
+  test "it's validated in actions" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "Designing APIs for humans"})
+      |> Ash.create!()
+
+    input = Ash.ActionInput.for_action(Post, :id_in_arg, %{post_id: post.id})
+    assert post.id == Ash.run_action!(input)
+
+    "post_" <> id = post.id
+
+    assert {:error, %{errors: [%{message: "incorrect object prefix"}]}} =
+             Ash.run_action(
+               Ash.ActionInput.for_action(Post, :id_in_arg, %{post_id: "user_#{id}"})
+             )
   end
 
   test "find_resource_for_prefix/2" do
