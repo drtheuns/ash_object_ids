@@ -1,9 +1,7 @@
 defmodule AshObjectIds.Test.Resources.Comment do
   @moduledoc false
 
-  defmodule Id do
-    use AshObjectIds.Type, prefix: "c", uuid_type: :uuid
-  end
+  use AshObjectIds, prefix: "c", uuid_type: :uuid
 
   use Ash.Resource,
     domain: AshObjectIds.Test.Domain,
@@ -20,13 +18,7 @@ defmodule AshObjectIds.Test.Resources.Comment do
   end
 
   attributes do
-    attribute :id, Id do
-      primary_key?(true)
-      public?(true)
-      writable?(false)
-      default(&Id.generate/0)
-      allow_nil?(false)
-    end
+    object_id_primary_key()
 
     attribute(:body, :string, public?: true)
   end

@@ -6,34 +6,74 @@ defmodule AshObjectIds do
   A more detailed explanation can be found in the ["Designing APIs for
   humans"](https://dev.to/stripe/designing-apis-for-humans-object-ids-3o5a) blog post.
 
-  This library provides an implementation for Ash:
+  This library provides an implementation for Ash, where the IDs are
+  base58-encoded UUIDs with a prefix:
 
       defmodule App.Blog.Post do
         use Ash.Resource,
           domain: App.Blog,
           data_layer: Ash.DataLayer.AshPostgres,
 
-        defmodule Id do
-          use AshObjectIds.Type, prefix: "p", uuid_type: :uuid_v7
-        end
+        # This generates a __MODULE__.Id module that's an Ash.Type.
+        use AshObjectIds, prefix: "p", uuid_type: :uuid_v7
 
         attributes do
-          attribute :id, Id do
-            primary_key?(true)
-            public?(true)
-            writable?(false)
-            default(&Id.generate/0)
-            allow_nil?(false)
-          end
-
+          object_id_primary_key()
           # ... other attributes
         end
       end
 
-  The IDs are base58-encoded UUIDs with a prefix.
+  Alternatively, if you want to control the module generation (or want to define
+  it outside of the resource), then you can `use AshObjectIds.Type`:
+
+      defmodule App.Blog.Post.Id do
+        use AshObjectIds.Type, prefix: "p", uuid_type: :uuid_v7
+      end
   """
 
   alias AshObjectIds.Type
+
+  defmacro __using__(opts) do
+    quote do
+      require AshObjectIds
+      import AshObjectIds, only: [object_id_primary_key: 0, object_id_primary_key: 1]
+
+      defmodule Id do
+        use AshObjectIds.Type, unquote(opts)
+      end
+    end
+  end
+
+  @doc """
+  Generates an object ID primary key.
+
+  This macro passes along the `opts` parameter to the `attribute` DSL.
+
+  Additionally, it accepts the following:
+
+    - `:name`: The attribute name of the field. Defaults to `:id`.
+    - `:type`: The name of the object ID module. Defaults to the calling
+      module's `__MODULE__.Id`.
+  """
+  defmacro object_id_primary_key(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new_lazy(:type, fn -> Module.concat(__CALLER__.module, Id) end)
+      |> Keyword.put_new(:primary_key?, true)
+      |> Keyword.put_new(:public?, true)
+      |> Keyword.put_new(:writable?, true)
+      |> Keyword.put_new(:allow_nil?, false)
+      |> Keyword.put_new(:name, :id)
+
+    {type, opts} = Keyword.pop(opts, :type)
+    {name, opts} = Keyword.pop(opts, :name)
+
+    opts = Keyword.put_new(opts, :default, {type, :generate, []})
+
+    quote do
+      attribute(unquote(name), unquote(type), unquote(Macro.escape(opts)))
+    end
+  end
 
   @doc """
   Decodes the given object ID into a string version of the UUID.

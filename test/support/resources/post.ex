@@ -1,13 +1,11 @@
 defmodule AshObjectIds.Test.Resources.Post do
   @moduledoc false
 
-  defmodule Id do
-    use AshObjectIds.Type, prefix: "post", uuid_type: :uuid_v7
-  end
-
   use Ash.Resource,
     domain: AshObjectIds.Test.Domain,
     data_layer: Ash.DataLayer.Ets
+
+  use AshObjectIds, prefix: "post", uuid_type: :uuid_v7
 
   ets do
     private?(true)
@@ -26,13 +24,7 @@ defmodule AshObjectIds.Test.Resources.Post do
   end
 
   attributes do
-    attribute :id, Id do
-      primary_key?(true)
-      public?(true)
-      writable?(false)
-      default(&Id.generate/0)
-      allow_nil?(false)
-    end
+    object_id_primary_key()
 
     attribute(:title, :string, public?: true)
   end

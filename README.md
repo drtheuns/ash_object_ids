@@ -8,9 +8,7 @@ defmodule App.Blog.Post do
     domain: App.Blog,
     data_layer: Ash.DataLayer.AshPostgres
 
-  defmodule Id do
-    use AshObjectIds.Type, prefix: "p", uuid_type: :uuid_v7
-  end
+  use AshObjectIds, prefix: "p", uuid_type: :uuid_v7
 
   # .. data layer stuff
 
@@ -19,14 +17,8 @@ defmodule App.Blog.Post do
   end
 
   attributes do
-    attribute :id, Id do
-      primary_key?(true)
-      public?(true)
-      writable?(false)
-      default(&Id.generate/0)
-      allow_nil?(false)
-    end
-
+    # Defines an :id field that uses `App.Blog.Post.Id` as type.
+    object_id_primary_key()
     attribute(:title, :string, public?: true)
     # ... other attributes
   end
