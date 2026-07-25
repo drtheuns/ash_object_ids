@@ -12,6 +12,11 @@ defmodule AshObjectIds.Type do
 
       def __object_id_info__, do: [prefix: unquote(prefix), uuid_type: unquote(uuid_type)]
 
+      if Code.ensure_loaded?(AshTypescript) do
+        def typescript_type_name, do: "string"
+        defoverridable typescript_type_name: 0
+      end
+
       @impl Ash.Type
       defdelegate storage_type(constraints), to: unquote(uuid_type)
 
