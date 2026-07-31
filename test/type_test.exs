@@ -6,8 +6,7 @@ defmodule AshObjectIds.TypeTest do
   for type <- [Ash.Type.UUID, Ash.Type.UUIDv7] do
     test "cast_input with #{inspect(type)}" do
       assert {:ok, nil} = Type.cast_input(unquote(type), "user", nil, [])
-
-      id = Type.encode_uuid(Ash.UUIDv7.bingenerate(), "user")
+      id = Type.generate(unquote(type), "user", [])
 
       assert {:ok, ^id} =
                Type.cast_input(unquote(type), "user", id, [])
@@ -21,5 +20,11 @@ defmodule AshObjectIds.TypeTest do
       id = unquote(type).generator([]) |> Enum.take(1) |> hd()
       assert {:ok, "user_" <> _} = Type.cast_stored(unquote(type), "user", id, [])
     end
+  end
+
+  test "cannot pass correctly formatted ID from another UUID type" do
+    id = Type.generate(Ash.Type.UUID, "user", [])
+
+    assert :error = Type.cast_input(Ash.Type.UUIDv7, "user", id, [])
   end
 end
