@@ -86,9 +86,18 @@ defmodule AshObjectIds.Type do
 
   def cast_stored(_uuid_type, _prefix, nil, _constraints), do: {:ok, nil}
 
+  # Stored values arrive as the 16 raw bytes from a uuid column, or as the
+  # 36-character text form (a uuid inside a JSON document, a map expression, a
+  # subquery cast to text). Both name the same uuid, so both encode to the
+  # same object id: the text is dumped to bytes before encoding.
   def cast_stored(uuid_type, prefix, input, constraints) do
-    with {:ok, uuid} when is_binary(uuid) <- uuid_type.cast_stored(input, constraints) do
-      {:ok, encode_uuid(input, prefix)}
+    with {:ok, uuid} when is_binary(uuid) <- uuid_type.cast_stored(input, constraints),
+         {:ok, binary_uuid} when is_binary(binary_uuid) and byte_size(binary_uuid) == 16 <-
+           uuid_type.dump_to_native(uuid, constraints) do
+      {:ok, encode_uuid(binary_uuid, prefix)}
+    else
+      {:ok, _other} -> :error
+      other -> other
     end
   end
 
